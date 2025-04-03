@@ -1,0 +1,570 @@
+# Invoke this set of tests in PWSH on 507Ubuntu with these commands:
+<#
+$config=New-PesterConfiguration
+$config.Output.Verbosity='detailed'
+$config.Run.Path = '/home/student/Aud1-Labs/pester//Ubuntu.Labs.tests.ps1'
+Invoke-Pester -Configuration $config
+#>
+
+Describe '507 Labs' {
+  BeforeDiscovery {
+    #If the AWS config files are not there, then skip the AWS tests
+    if ( -not ( (Test-Path -Type Leaf -Path /home/student/.aws/credentials) -or (Test-Path -Type Leaf -Path /home/student/.aws/config) ) ) {
+      $skipAWS = $true
+    }
+    else {
+      #Skip the Cloud Services tests if there are no good AWS credentials
+      $userARN = (aws sts get-caller-identity | jq '.Arn')
+      if ( $userARN -notlike '*student*') {
+        $skipAWS = $true
+      }
+    }
+
+    #If the Azure configuration is not there, then skip the Azure tests
+    $azSubCount = (Get-Content /home/student/.azure/azureProfile.json | ConvertFrom-Json).Subscriptions.Count
+    if ( $azSubCount -lt 1) {
+      Write-Host "Skipping Azure tests because config files do not exist"
+      $skipAzure = $true
+    } 
+  }
+
+  Context 'Lab 1.2' {
+    It 'Part 1 - Host count with ARP' {
+      $hostCount = [int](sudo nmap -sn -n 10.50.7.20-110 | grep -c '^Host is up' )
+      $hostCount | Should -BeGreaterOrEqual 10
+    }
+
+    It 'Part 1 - Host count without ARP' {
+      $hostCount = [int](sudo nmap -sn -n --disable-arp-ping 10.50.7.20-110 | grep -c '^Host is up' )
+      $hostCount | Should -BeGreaterOrEqual 9
+    }
+
+    It 'Part 2 - Stealth scan gets filtered port 80' {
+      $portCount = [int]( sudo nmap -sS -p 80 10.50.7.22-29 | grep -c 'filtered' )
+      $portCount | Should -Be 1
+    }
+
+    It 'Part 2 - Connect scan gets open port 80' {
+      $portCount = [int]( sudo nmap -sT -p 80 10.50.7.22-29 | grep -c 'open' )
+      $portCount | Should -Be 4
+    }
+    
+    It 'Part 3 - OpenSSH version is 8.9p1' {
+      $portCount = [int]( sudo nmap -sV -sT -p 22 10.50.7.20-25 | grep -c '8.9p1' )
+      $portCount | Should -Be 6
+    }
+  
+    It 'Part 3 - Kubectl shows 4 services' {
+      $portList = ( microk8s kubectl get services | awk -F: '/NodePort/ {print $2}' | sed -e 's/\/.*//' )
+      $portList | Should -Contain 30020
+      $portList | Should -Contain 30022
+      $portList | Should -Contain 30023
+      $portList | Should -Contain 30024
+    }
+
+    It 'Part 3 - K8s Apache versions correct' {
+      $verList = ( sudo nmap -sT -p30022-30024 -sV 127.0.0.1 | awk '/Apache/ {print $6}' )
+      $verList[0] | Should -Be '2.4.7'
+      $verList[1] | Should -Be '2.4.7'
+      $verList[2] | Should -Be '2.4.25'
+    }
+  }
+
+  Context 'Lab 2.2' {
+
+    BeforeAll {
+      Write-Host "Running nmap full connect scan against Win10 VM (slow)"
+      $nmapResults = (sudo nmap -sT -p1-65535 -T4 10.50.7.101)
+    }
+
+    It 'Part 4 - Nmap TCP full-connect scan - Open Ports' {
+      $openPorts = [int]($nmapResults | grep -c 'open' )
+      $openPorts | Should -BeGreaterOrEqual 4
+    }
+
+    It 'Part 4 - Nmap TCP full-connect scan - Ports' {
+      $portList = ($nmapResults | awk '/open/ {print $1}')
+      $portList | Should -Contain '22/tcp'
+      $portList | Should -Contain '135/tcp'
+      $portList | Should -Contain '139/tcp'
+      $portList | Should -Contain '445/tcp'
+    }
+  }
+
+  Context 'Lab 3.1' {
+    It 'Part 1 - lsb_release distribution is correct' {
+      (lsb_release -i | awk -F: '{print $2}') |
+        Should -BeLike '*Ubuntu'
+      (lsb_release -d | awk -F: '{print $2}') |
+        Should -BeLike '*Ubuntu 22.04.3 LTS'
+      (lsb_release -r | awk -F: '{print $2}') |
+        Should -BeLike '*22.04'
+      (lsb_release -c | awk -F: '{print $2}') | 
+        Should -BeLike '*jammy'
+    }
+
+    It 'Part 1 - APT shows missing patches' {
+      (apt list --upgradable 2>/dev/null | grep -cv 'Listing' ) |
+        Should -BeGreaterOrEqual 1
+    }
+
+    It 'Part 1 - SUID count is > 100' {
+      $res = (sudo find / -type f -perm /4000 2>/dev/null) 
+      $res.Count | Should -BeGreaterThan 100
+    }
+    #Part 2 is tested via SSH to Alma from Windows VM
+
+    It 'Part 3 - Osquery returns correct OS information' {
+      $res = osqueryi "select * from os_version" --json | ConvertFrom-Json
+      $res.codename | Should -BeExactly "jammy"
+      $res.major | Should -BeExactly 22
+      $res.minor | Should -BeExactly 4
+      $res.name | Should -BeExactly "Ubuntu"
+      $res.patch | Should -BeExactly 0
+      $res.platform | Should -BeExactly "ubuntu"
+      $res.platform_like | Should -BeExactly "debian"
+      $res.version | Should -BeExactly "22.04.3 LTS (Jammy Jellyfish)"
+    }
+
+    It 'Part 3 - Osquery returns > 40 SUID binaries' {
+      $res = (osqueryi "Select * from suid_bin;" --json | ConvertFrom-Json)
+      $res.Count | Should -BeGreaterThan 40
+    }
+  }
+
+  Context 'Lab 3.2' {
+    It 'Part 1 - twSetup script is correct' {
+      $hash = (Get-FileHash -Algorithm SHA256 -Path /home/student/Aud1-Labs/tripwire/twSetup.sh).Hash
+      $hash | Should -BeExactly 'CDF13850E29ED09119AED455038AA2B24704FDBD4FF1A33B85CC66A9C9713421'
+    }
+
+    It 'Part 1 - Original tripwire policy is correct' {
+      $hash = (Get-FileHash -Algorithm SHA256 -Path /etc/tripwire/twpol.txt).Hash
+      $hash | Should -BeExactly '16FE9FF02E0BECE41001A4D6182384792F9023E160C0B0C646D2448726EC3166'
+    }
+
+    It 'Part 1 - Corrected tripwire policy is correct' {
+      $hash = (Get-FileHash -Algorithm SHA256 -Path /home/student/Aud1-Labs/tripwire/twpol-corrected.txt).Hash
+      $hash | Should -BeExactly '374696CDDA5FA74850D538A7A52665B8427E306EA06A3384D6B95D0E39F5E700'
+    }
+
+    It 'Part 2 - net.ipv4.tcp_syncookies = 1' {
+      $setting = sysctl net.ipv4.tcp_syncookies | awk '{print $3}'
+      $setting | Should -BeExactly 1
+    }
+
+    It 'Part 2 - kernel.randomize_va_space = 2' {
+      $setting = sysctl kernel.randomize_va_space | awk '{print $3}'
+      $setting | Should -BeExactly 2
+    }
+
+    It 'Part 2 - net.ipv4.ip_forward = 1' {
+      $setting = sysctl net.ipv4.ip_forward | awk '{print $3}'
+      $setting | Should -BeExactly 1
+    }
+
+    It 'Part 3 - Netstat shows port 6379 on loopback' {
+      $ports = sudo netstat -ant | awk '/^tcp.*LISTEN[ ]*$/ {print $4}' | grep 6379
+      $ports | Should -Contain '::1:6379'
+      $ports | Should -Contain '127.0.0.1:6379'
+    }
+
+    It 'Part 3 - Nmap does not show port 6379' {
+      $portCount = (sudo nmap -sT -p 1-65535 10.50.7.20-29 | grep -c 6379)
+      $portCount | Should -BeExactly 0
+    }
+
+    #Part 4 - Live systemctl tests- no need to test them here
+
+    It 'Part 5 - Osquery shows 76 open TCP ports' {
+      $query = "select address,port from listening_ports where protocol=6 order by address,port;"
+      $ports = (osqueryi "$query" --json | ConvertFrom-Json)
+      $ports.Count | Should -BeGreaterOrEqual 76
+    }
+
+    It 'Part 5 - Osquery shows -1 for pids' {
+      $query = "select pid,address,port from listening_ports where protocol=6 order by address,port;"
+      $ports = (osqueryi "$query" --json | ConvertFrom-Json)
+      $ports[0].pid | Should -BeExactly -1
+    }
+
+    It 'Part 5 - Osquery shows correct pids with sudo' {
+      $query = "select pid,address,port from listening_ports where protocol=6 order by address,port;"
+      $ports = (sudo osqueryi "$query" --json | ConvertFrom-Json)
+      $ports[0].pid | Should -BeGreaterOrEqual 0
+    }
+
+    It 'Part 5 - Osquery shows startup items' {
+      $query = "Select name,source,status,path from startup_items;"
+      $items = (sudo osqueryi "$query" --json | ConvertFrom-Json)
+      $items.Count | Should -BeGreaterThan 0
+    }
+  }
+
+  Context 'Lab 3.3' {
+    AfterAll {
+      #Delete the rules we created
+      sudo auditctl -D
+      #Delete the files we copied
+      sudo rm -fR /root/lynis
+    }
+    It 'Part 1 - Syslog has 28 entries for BuggyBank' {
+      $logCount = (grep -ic buggybank /home/student/Aud1-Labs/logs/syslog)
+      $logCount | Should -BeExactly 28
+    }
+    
+    It 'Part 1 - Syslog has 130 entries for systemd.*executable' {
+      $logCount = (grep -c "systemd.*executable" /home/student/Aud1-Labs/logs/syslog)
+      $logCount | Should -BeExactly 130
+    }
+
+    It 'Part 1 - Syslog.2.gz has 30 entries for systemd.*executable' {
+      $logCount = (zgrep -c "systemd" /home/student/Aud1-Labs/logs/syslog.2.gz)
+      $logCount | Should -BeExactly 30
+    }
+
+    It 'Part 2 - Journalctl shows at least one prior boot' {
+      (journalctl --list-boots).Count | Should -BeGreaterOrEqual 2
+    }
+
+    It 'Part 3 - Auditctl shows no initial rules' {
+      $ruleList = (sudo auditctl -l)
+      $ruleList | Should -BeExactly 'No rules'
+    }
+
+    It 'Part 4 - Auditctl rules yield >100 search results' {
+      #Do the lab steps:
+      sudo auditctl -w /root -k rootHome
+      sudo auditctl -w /home/student -k studentHome
+
+      sudo cp -vR /home/student/Aud1-Labs/lynis /root
+      sudo chown -R root:root /root/lynis
+      sudo chmod +x /root/lynis/lynis
+
+      $logEntries = (sudo ausearch -k rootHome | sudo aureport -f -i)
+      $logEntries.Count | Should -BeGreaterThan 100
+    }
+  }
+
+  Context 'Lab 3.4' {
+    It 'Part 1 - Lynis is version 3.0.9' {
+      Set-Location /home/student/Aud1-Labs/lynis
+      $res = (bash ./lynis show version)
+      $res | Should -BeExactly '3.0.9'
+    }
+
+    It 'Part 2 - Inspec DIL Ubuntu returns results' {
+      Write-Host "Running inspec against Ubuntu (slow)"
+      Set-Location /home/student/Aud1-Labs/inspec
+      $res = (inspec exec ./cis-dil-benchmark/ --reporter json:- | ConvertFrom-Json)
+      ($res.profiles.controls.results | Where-Object Status -EQ 'failed').Count |
+        Should -BeGreaterThan 0
+      ($res.profiles.controls.results | Where-Object Status -EQ 'passed').Count |
+        Should -BeGreaterThan 0
+      ($res.profiles.controls.results | Where-Object Status -EQ 'skipped').Count |
+        Should -BeGreaterThan 0
+    }
+
+    It 'Part 3 - Inspec DIL Alma returns results' {
+      Write-Host "Running inspec against Alma (slow)"
+      Set-Location /home/student/Aud1-Labs/inspec
+      $res = (inspec exec ./cis-dil-benchmark/ -t ssh://student:student@10.50.7.40 --reporter json:- | ConvertFrom-Json)
+      ($res.profiles.controls.results | Where-Object Status -EQ 'failed').Count |
+        Should -BeGreaterThan 0
+      ($res.profiles.controls.results | Where-Object Status -EQ 'passed').Count |
+        Should -BeGreaterThan 0
+      ($res.profiles.controls.results | Where-Object Status -EQ 'skipped').Count |
+        Should -BeGreaterThan 0
+    }
+  }
+
+  Context 'Lab 4.1' {
+    BeforeAll {
+      #Create docker bench results file
+      Set-Location /home/student/Aud1-Labs/docker-bench-security/
+      sudo bash /home/student/Aud1-Labs/docker-bench-security/docker-bench-security.sh -b -l results.txt
+
+      #create config files for kubectl to work
+      mkdir -p /home/student/.kube
+      microk8s config > /home/student/.kube/config
+
+      #pull kube-bench docker container
+      docker pull docker.io/aquasec/kube-bench:latest
+    }
+    AfterAll {
+      #Delete the docker bench results file
+      sudo rm -f results.txt
+
+      #remove kube-bench docker container
+      docker rmi -f aquasec/kube-bench
+    }
+    It 'Part 1 - Check docker root directory' {
+      $res = (docker info -f '{{ .DockerRootDir }}' | grep -c '/var/lib/docker')
+      $res | Should -BeExactly 1
+    }
+
+    It 'Part 1 - /var/lib/docker not a mountpoint' {
+      $res = (mountpoint /var/lib/docker | grep -c 'is not a mountpoint')
+      $res | Should -BeExactly 1
+    }
+
+    It 'Part 1 - Docker default bridge disallow traffic between containers' {
+      $res = (docker network ls --quiet | xargs docker network inspect --format '{{ .Name}}: {{ .Options }}' 
+      | grep -c 'com.docker.network.bridge.enable_icc:true')
+      $res | Should -BeExactly 1
+    }
+
+    It 'Part 1 - aufs not used as a storage driver' {
+      $res = (docker info --format 'Storage Driver: {{ .Driver }}' | grep -c 'aufs')
+      $res | Should -BeExactly 0
+      $res = (docker info --format 'Storage Driver: {{ .Driver }}' | grep -c 'overlay2')
+      $res | Should -BeExactly 1
+    }
+
+    It 'Part 1 - daemon.json does not exist' {
+      $res = (sudo find / -Name "daemon.json" -type f | wc -l)
+      $res | Should -BeExactly 0
+    }
+
+    It 'Part 2 - Docker-Bench returns passes' {
+      $res = (grep "^\[PASS\]" results.txt | wc -l)
+      $res | Should -BeGreaterOrEqual 1
+    }
+
+    It 'Part 2 - Docker-Bench returns warns' {
+      $res = (grep "^\[WARN\]" results.txt | wc -l)
+      $res | Should -BeGreaterOrEqual 1
+    }
+
+    It 'Part 2 - Docker-Bench returns infos' {
+      $res = (grep "^\[INFO\]" results.txt | wc -l)
+      $res | Should -BeGreaterOrEqual 1
+    }
+
+    It 'Part 2 - Docker-Bench has correct score' {
+      $res = (Get-Content ./results.txt | awk '/INFO.*Score:/ {print $3}')
+      $res | Should -Be '4'
+    }
+
+    It 'Part 3 - kubectl client version check' {
+      $res = (kubectl version | awk '/Client.*:/ {print $3}')
+      $res | Should -BeExactly 'v1.28.4'
+    }
+
+    It 'Part 3 - kubectl kustomize version check' {
+      $res = (kubectl version | awk '/Kustomize.*:/ {print $3}')
+      $res | Should -BeExactly 'v5.0.4-0.20230601165947-6ce0bf390ce3'
+    }
+
+    It 'Part 3 - kubectl server version check' {
+      $res = (kubectl version | awk '/Server.*:/ {print $3}')
+      $res | Should -BeExactly 'v1.28.15'
+    }
+
+    It 'Part 3 - kubectl has namespaces' {
+      $res = (kubectl get namespaces | wc -l)
+      $res | Should -BeGreaterOrEqual 2
+    }
+
+    It 'Part 3 - kubectl has pods in the default namespace' {
+      $res = (kubectl get pods --namespace default | wc -l)
+      #4 services + header row = 5
+      $res | Should -BeExactly 5
+    }
+
+    It 'Part 3 - kubectl has services in the default namespce' {
+      $res = (kubectl get services --namespace default | wc -l)
+      #5 services + header row = 6
+      $res | Should -BeExactly 6
+    }
+
+    It 'Part 3 - kubectl network policy has no resources' {
+      $res = (kubectl get networkpolicy --all-namespaces 2>&1 | grep -c 'No resources found')
+      $res | Should -BeExactly 1
+    }
+
+    It 'Part 4 - kube-bench returns results' {
+      $res = (docker run --pid=host -v /etc:/etc:ro -v /var:/var:ro -v /usr/local/bin/kubectl:/usr/local/mount-from-host/bin/kubectl -v ~/.kube:/.kube -e KUBECONFIG=/.kube/config -t docker.io/aquasec/kube-bench:latest run
+        | tail -13 | awk '/ checks / {print $1}' )
+      $res.count | Should -BeExactly 8
+    }
+  }
+
+  Context 'Lab 4.2' {
+    #Run custodian with the IAM rules
+    BeforeAll {
+      ~/custodian/bin/custodian run --output-dir ./pester /home/student/Aud1-Labs/custodian/aws_iam.yaml
+    }
+
+    It 'Part 2 - Prowler IAM tests return results' {
+      prowler aws --services iam -M csv -F pester
+      $prowlerResult = Import-Csv ./output/pester.csv -Delimiter ';'
+      $prowlerResult.Count | Should -BeGreaterThan 0
+      ($prowlerResult | Where-Object { $_.Status -eq 'PASS' }).Count | Should -BeGreaterThan 0
+      ($prowlerResult | Where-Object { $_.Status -eq 'FAIL' }).Count | Should -BeGreaterThan 0
+    }
+
+    It 'Part 3 - Custodian IAM yaml file validates' {
+      $res = (~/custodian/bin/custodian validate /home/student/Aud1-Labs/custodian/aws_iam.yaml 2>&1)
+      $res | Should -BeLike '*Configuration valid*'
+    }
+
+    It 'Part 3 - Custodian no-mfa rule returns results' {
+      (Get-Content ./pester/iam-no-mfa/resources.json | ConvertFrom-Json).Count |
+        Should -BeGreaterThan 0
+    }
+
+    It 'Part 3 - Custodian inline-policy rule returns results' {
+      (Get-Content ./pester/iam-inline-policy/resources.json | ConvertFrom-Json).Count |
+        Should -BeGreaterThan 0
+    }
+  }
+
+  Context 'Lab 4.3' {
+    BeforeAll {
+      ~/custodian/bin/custodian run --output-dir ./pester /home/student/Aud1-Labs/custodian/aws_ingress.yaml
+    
+    }
+    # Part 1 is Web UI for AWS - not tested.
+
+    It 'Part 2 - Custodian ingress rule validates' {
+      $res = (~/custodian/bin/custodian validate /home/student/Aud1-Labs/custodian/aws_ingress.yaml 2>&1)
+      $res | Should -BeLike '*Configuration valid*'
+    }
+
+    It 'Part 2 - Custodian ingress rule returns results' {
+      (Get-Content ./pester/aws-ingress-admin-ports-allowed/resources.json | ConvertFrom-Json).Count |
+        Should -BeGreaterThan 0
+    }
+
+    It 'Part 3 - Prowler AWS tests return results' {
+      prowler aws --checks-file ec2checks.json -f us-east-2 -M csv -F pester
+      $prowlerResult = Import-Csv ./output/pester.csv -Delimiter ';'
+      $prowlerResult.Count | Should -BeGreaterThan 0
+      ($prowlerResult | Where-Object { $_.Status -eq 'PASS' }).Count | Should -BeGreaterThan 0
+      ($prowlerResult | Where-Object { $_.Status -eq 'FAIL' }).Count | Should -BeGreaterThan 0
+    }
+
+    It 'Part 4 - Terrascan tests return results' {
+      Set-Location /home/student/Aud1-Labs/infrastructure/terraform/aws
+      $terraScanResult = (terrascan scan . -o json | ConvertFrom-Json).results.scan_summary
+      $terraScanResult.policies_validated | Should -Be 173
+      $terraScanResult.violated_policies | Should -Be 23
+      $terraScanResult.low | Should -Be 4
+      $terraScanResult.medium | Should -Be 8
+      $terraScanResult.high | Should -Be 11
+    }
+  }
+
+  Context 'Lab 4.4' {
+    
+    BeforeAll {
+      chmod a+x /home/student/Aud1-Labs/cloudquery.io/cloudquery
+      #Clear out the tested tables, in case you've synced before with other accounts
+      Write-Host "Deleting old data from tested cloudquery tables"
+      psql "$Env:DSN" -c 'delete from aws_iam_users;'
+      psql "$Env:DSN" -c 'delete from aws_iam_user_access_keys;'
+      psql "$Env:DSN" -c 'delete from aws_ec2_subnets;'
+      psql "$Env:DSN" -c 'delete from aws_policy_results;'
+      psql "$Env:DSN" -c 'delete from azure_policy_results;'
+      
+      Write-Host "Fetching cloudquery data (slow)"
+      ~/Aud1-Labs/cloudquery.io/cloudquery sync ~/Aud1-Labs/cloudquery.io/config/
+      $env:DSN = 'postgres://postgres:pass@localhost:5432/postgres'
+      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/aws/views/resources.sql
+      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/azure/views/resource.sql
+      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/aws/policies/cis_v1.5.0/policy.sql
+      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/azure/policies/cis_v1.3.0/policy.sql
+
+    }
+
+    It 'Part 3 - Prowler AWS has compliance tests' {
+      prowler aws --list-compliance > ./prowler.txt
+      './prowler.txt' | Should -FileContentMatch 'cis_1.5_aws'
+      './prowler.txt' | Should -FileContentMatch 'cis_2.0_aws'
+    }
+
+    It 'Part 3 - Prowler AWS compliance tests return results' {
+      prowler aws --compliance cis_2.0_aws -f us-east-2 -M csv -F pester
+      $prowlerResult = Import-Csv ./output/pester.csv -Delimiter ';'
+      $prowlerResult.Count | Should -BeGreaterThan 0
+      ($prowlerResult | Where-Object { $_.Status -eq 'PASS' }).Count | Should -BeGreaterThan 0
+      ($prowlerResult | Where-Object { $_.Status -eq 'FAIL' }).Count | Should -BeGreaterThan 0
+    }
+
+    It 'Part 4 - aws_iam_users table exists' {
+      psql "$Env:DSN" -c '\d aws_iam_users' | grep -c '^ arn' | Should -BeGreaterOrEqual 1
+    }
+
+    It 'part 4 - aws_iam_users table has at least 8 rows' {
+      [int](psql "$Env:DSN" -c 'select account_id,arn from aws_iam_users;' | grep -c 'arn:') | 
+        Should -BeGreaterOrEqual 8
+    }
+
+    It 'Part 4 - GLee has two keys' {
+      psql "$Env:DSN" -c "select distinct user_name,access_key_id from aws_iam_user_access_keys where user_name like 'GLee%';" | grep -ci 'glee' | 
+        Should -BeExactly 2
+    }
+
+    It 'Part 4 - Six VPCs lack the business_unit tag' {
+      $query = "select request_region,cidr_block,vpc_id
+      from aws_ec2_subnets where request_region = 'us-east-2'
+      and tags::text not like '%business_unit%';
+      "
+
+      [int](psql "$Env:DSN" -c "$query" | grep -c '^ us-east-2') | 
+        Should -BeExactly 6
+    }
+
+    It 'Part 4 - AWS benchmark has passes and fails' {
+      psql "$Env:DSN" -c "select status, count(*) as numTests from aws_policy_results group by status" | 
+        grep -c "^ pass" | Should -BeExactly 1      
+      psql "$Env:DSN" -c "select status, count(*) as numTests from aws_policy_results group by status" | 
+        grep -c "^ fail" | Should -BeExactly 1
+    }
+
+    It 'Part 4 - Azure benchmark has passes and fails' {
+      psql "$Env:DSN" -c "select status, count(*) as numTests from azure_policy_results group by status" | 
+        grep -c "^ pass" | Should -BeExactly 1
+      psql "$Env:DSN" -c "select status, count(*) as numTests from azure_policy_results group by status" | 
+        grep -c "^ fail" | Should -BeExactly 1
+    }
+
+  }
+
+  Context 'Lab 5.2' {
+    It 'Part 2 - Nmap returns self-signed cert' {
+      $issuerInfo = (sudo nmap -p443 10.50.7.20 --script ssl-cert | awk '/Issuer:/ {print$3}')
+      $issuerInfo | Should -BeLike '*juiceshop.lab.local*'
+    }
+
+    It 'Part 2 - Nmap returns TLS v1.2 and v1.3' {
+      $versionList = (nmap -p443 10.50.7.20 --script ssl-enum-ciphers | awk '/TLSv[0-9]/ {print $2}' | sed -e 's/://g')
+      $versionList.Count | Should -BeExactly 2
+      $versionList | Should -Contain 'TLSv1.2'
+      $versionList | Should -Contain 'TLSv1.3'
+    }
+
+    It 'Part 3 - Nmap returns correct headers' {
+      $res = nmap -p80 10.50.7.20 --script http-headers
+      $res | grep -c 'Strict-Transport-Security' |
+        Should -BeExactly 0
+      $res | grep -c 'Content-Security-Policy' |
+        Should -BeExactly 0
+      $res | grep -c 'X-Frame-Options' |
+        Should -BeExactly 1
+    }
+    
+    It 'Part 3 - Nmap robots.txt lists ftp directory' {
+      $res = (nmap -p80 10.50.7.20 --script http-robots.txt)
+      $res | Should -Contain '|_/ftp'
+    }
+
+    #Part 4 uses browser plugins and is not tested
+
+    It 'Part 5 - NodeJSScan container exists' {
+      (docker image ls | awk '/\// {print $1 $2}') | 
+        Should -Contain 'opensecurity/nodejsscan5x7.22.1'
+    }
+  }
+}
