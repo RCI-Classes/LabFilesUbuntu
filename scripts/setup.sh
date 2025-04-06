@@ -4,3 +4,8 @@ for pod in $(microk8s kubectl get pods | awk '/Terminating/ {print $1}' ); do
   
 done
 microk8s kubectl get pods
+
+cd /home/student/labFiles
+git pull
+
+workbook-update
