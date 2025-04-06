@@ -8,3 +8,5 @@ microk8s kubectl get pods
 
 cd /home/student/labFiles
 git pull
+
+/bin/bash /var/www/html/workbook/resources/workbook-update.sh
