@@ -13,6 +13,9 @@ microk8s kubectl get pods
 for pod in $(microk8s kubectl get pods | awk '/Terminating/ {print $1}' ); do 
   microk8s kubectl delete pod $pod --force 
 done
+echo '#################################'
+echo 'Current kubernetes pods'
+echo '#################################'
 microk8s kubectl get pods
 
 echo '#################################'
