@@ -23,3 +23,4 @@ echo 'Restarting Nginx web server'
 echo '#################################'
 sudo systemctl daemon-reload
 sudo systemctl restart nginx.service
+sudo systemctl status --no-pager nginx.service
