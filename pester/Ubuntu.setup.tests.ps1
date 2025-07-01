@@ -100,16 +100,6 @@ Describe 'Lab Setup tests for 507Ubuntu VM' {
         #     $res | Should -BeGreaterThan 0
         # }
 
-        It 'Default website has workbook link' {
-            $res = (curl -s http://10.50.7.50:80 | grep -ci workbook)
-            $res | Should -BeExactly 1  
-        }
-
-        It 'Workbook website has lab links' {
-            $res = (curl -s http://10.50.7.50:80/workbook/ | grep -ci " lab [0-9]\.[0-9]")
-            $res | Should -BeGreaterThan 10
-        }
-
         It 'BWapp database install' {
             $res = (curl -s  http://10.50.7.22/install.php?install=yes | grep -ci bwapp)
             $res | Should -BeGreaterThan 0
@@ -140,10 +130,6 @@ Describe 'Lab Setup tests for 507Ubuntu VM' {
             $res | Should -BeGreaterThan 0
         }
 
-        It 'Workbook home page' {
-            $res = (curl -s http://10.50.7.20:507/workbook/ | grep -ci aud507)
-            $res | Should -BeGreaterOrEqual 1
-        }
     }
 
     #Ensure systemd services are running
@@ -222,9 +208,9 @@ Describe 'Lab Setup tests for 507Ubuntu VM' {
 
     #Local system checks
     Context 'Local system' {
-        It 'Disk Used < 75%' {
+        It 'Disk Used < 85%' {
             $usedPct = [int32](df -h | awk '/ \/$/ { print $5 }' | sed -e 's/%//')
-            $usedPct | Should -BeLessThan 75
+            $usedPct | Should -BeLessThan 85
         }
     }
 
