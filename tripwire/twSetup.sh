@@ -6,7 +6,7 @@ sudo rm -f /etc/tripwire/*.key
 sudo rm -f /etc/tripwire/tw.cfg
 sudo rm -f /etc/tripwire/twcfg.txt
 sudo rm -f /var/lib/tripwire/ubuntu.twd
-sudo twadmin --generate-keys -L /etc/tripwire/ubuntu-local.key -S /etc/tripwire/site.key  -P Aud507LocalKey -Q Aud507SiteKey
+sudo twadmin --generate-keys -L /etc/tripwire/$(hostname)-local.key -S /etc/tripwire/site.key  -P AUD1LocalKey -Q AUD1SiteKey
 sudo cp /home/student/twpol.txt /etc/tripwire/
 
 echo '******************************************************'
@@ -45,7 +45,7 @@ sudo bash -c 'cat << EOF >/home/student/twconf
 #!/usr/bin/expect
 spawn sudo twadmin --create-cfgfile --cfgfile /home/student/tw.cfg --site-keyfile /etc/tripwire/site.key /etc/tripwire/twcfg.txt
 expect "passphrase"
-send "Aud507SiteKey\n"
+send "AUD1SiteKey\n"
 interact
 exit
 EOF'
@@ -64,7 +64,7 @@ sudo bash -c 'cat << EOF >/home/student/twpol
 #!/usr/bin/expect
 spawn sudo twadmin  -m P /etc/tripwire/twpol.txt
 expect "passphrase"
-send "Aud507SiteKey\n"
+send "AUD1SiteKey\n"
 interact
 exit
 EOF'
@@ -80,7 +80,7 @@ sudo bash -c 'cat << EOF >/home/student/twinit
 #!/usr/bin/expect
 spawn sudo tripwire  -m i 
 expect "passphrase"
-send "Aud507LocalKey\n"
+send "AUD1LocalKey\n"
 interact
 exit
 EOF'
