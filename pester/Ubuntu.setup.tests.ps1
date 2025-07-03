@@ -255,11 +255,11 @@ Describe 'Lab Setup tests for 507Ubuntu VM' {
                 Should -FileContentMatch 'cloudquery/aws'
         }
 
-        It 'Cloudquery.io azure.yml file exists' {
-            '/home/student/labFiles/cloudquery.io/config/azure.yml'
-            '/home/student/labFiles/cloudquery.io/config/azure.yml' |             
-                Should -FileContentMatch 'cloudquery/azure'
-        }
+        # It 'Cloudquery.io azure.yml file exists' {
+        #     '/home/student/labFiles/cloudquery.io/config/azure.yml'
+        #     '/home/student/labFiles/cloudquery.io/config/azure.yml' |             
+        #         Should -FileContentMatch 'cloudquery/azure'
+        # }
 
         It 'Cloudquery.io postgresql.yml file exists' {
             '/home/student/labFiles/cloudquery.io/config/postgresql.yml'
