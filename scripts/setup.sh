@@ -24,3 +24,8 @@ echo '#################################'
 sudo systemctl daemon-reload
 sudo systemctl restart nginx.service
 sudo systemctl status --no-pager nginx.service
+
+echo '#################################'
+echo 'Setting local database password'
+echo '#################################'
+sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'pass2';"

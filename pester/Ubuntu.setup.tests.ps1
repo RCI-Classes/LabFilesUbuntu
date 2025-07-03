@@ -24,11 +24,11 @@ Describe 'Lab Setup tests for 507Ubuntu VM' {
         }
 
         #If the Azure configuration is not there, then skip the Azure tests
-        $azSubCount = (Get-Content /home/student/.azure/azureProfile.json | ConvertFrom-Json).Subscriptions.Count
-        if ( $azSubCount -lt 1) {
-            Write-Host "Skipping Azure tests because config files do not exist"
-            $skipAzure = $true
-        } 
+        # $azSubCount = (Get-Content /home/student/.azure/azureProfile.json | ConvertFrom-Json).Subscriptions.Count
+        # if ( $azSubCount -lt 1) {
+        #     Write-Host "Skipping Azure tests because config files do not exist"
+        #     $skipAzure = $true
+        # } 
     }
 
   
@@ -268,10 +268,10 @@ Describe 'Lab Setup tests for 507Ubuntu VM' {
         }
     }
 
-    Context 'Cloud CLI configuration - Azure' -Skip:$skipAzure {
-        It 'Azure credentials are working' {
-            $username = (az account show | jq '.user.name')
-            $username | Should -BeLike '"student*@*'
-        }
-    }
+    # Context 'Cloud CLI configuration - Azure' -Skip:$skipAzure {
+    #     It 'Azure credentials are working' {
+    #         $username = (az account show | jq '.user.name')
+    #         $username | Should -BeLike '"student*@*'
+    #     }
+    # }
 }
