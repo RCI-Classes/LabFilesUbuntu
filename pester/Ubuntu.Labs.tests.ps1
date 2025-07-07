@@ -2,7 +2,7 @@
 <#
 $config=New-PesterConfiguration
 $config.Output.Verbosity='detailed'
-$config.Run.Path = '/home/student/Aud1-Labs/pester//Ubuntu.Labs.tests.ps1'
+$config.Run.Path = '/home/student/labFiles/pester//Ubuntu.Labs.tests.ps1'
 Invoke-Pester -Configuration $config
 #>
 
@@ -131,7 +131,7 @@ Describe '507 Labs' {
 
   Context 'Lab 3.2' {
     It 'Part 1 - twSetup script is correct' {
-      $hash = (Get-FileHash -Algorithm SHA256 -Path /home/student/Aud1-Labs/tripwire/twSetup.sh).Hash
+      $hash = (Get-FileHash -Algorithm SHA256 -Path /home/student/labFiles/tripwire/twSetup.sh).Hash
       $hash | Should -BeExactly 'CDF13850E29ED09119AED455038AA2B24704FDBD4FF1A33B85CC66A9C9713421'
     }
 
@@ -141,7 +141,7 @@ Describe '507 Labs' {
     }
 
     It 'Part 1 - Corrected tripwire policy is correct' {
-      $hash = (Get-FileHash -Algorithm SHA256 -Path /home/student/Aud1-Labs/tripwire/twpol-corrected.txt).Hash
+      $hash = (Get-FileHash -Algorithm SHA256 -Path /home/student/labFiles/tripwire/twpol-corrected.txt).Hash
       $hash | Should -BeExactly '374696CDDA5FA74850D538A7A52665B8427E306EA06A3384D6B95D0E39F5E700'
     }
 
@@ -206,17 +206,17 @@ Describe '507 Labs' {
       sudo rm -fR /root/lynis
     }
     It 'Part 1 - Syslog has 28 entries for BuggyBank' {
-      $logCount = (grep -ic buggybank /home/student/Aud1-Labs/logs/syslog)
+      $logCount = (grep -ic buggybank /home/student/labFiles/logs/syslog)
       $logCount | Should -BeExactly 28
     }
     
     It 'Part 1 - Syslog has 130 entries for systemd.*executable' {
-      $logCount = (grep -c "systemd.*executable" /home/student/Aud1-Labs/logs/syslog)
+      $logCount = (grep -c "systemd.*executable" /home/student/labFiles/logs/syslog)
       $logCount | Should -BeExactly 130
     }
 
     It 'Part 1 - Syslog.2.gz has 30 entries for systemd.*executable' {
-      $logCount = (zgrep -c "systemd" /home/student/Aud1-Labs/logs/syslog.2.gz)
+      $logCount = (zgrep -c "systemd" /home/student/labFiles/logs/syslog.2.gz)
       $logCount | Should -BeExactly 30
     }
 
@@ -234,7 +234,7 @@ Describe '507 Labs' {
       sudo auditctl -w /root -k rootHome
       sudo auditctl -w /home/student -k studentHome
 
-      sudo cp -vR /home/student/Aud1-Labs/lynis /root
+      sudo cp -vR /home/student/labFiles/lynis /root
       sudo chown -R root:root /root/lynis
       sudo chmod +x /root/lynis/lynis
 
@@ -245,14 +245,14 @@ Describe '507 Labs' {
 
   Context 'Lab 3.4' {
     It 'Part 1 - Lynis is version 3.0.9' {
-      Set-Location /home/student/Aud1-Labs/lynis
+      Set-Location /home/student/labFiles/lynis
       $res = (bash ./lynis show version)
       $res | Should -BeExactly '3.0.9'
     }
 
     It 'Part 2 - Inspec DIL Ubuntu returns results' {
       Write-Host "Running inspec against Ubuntu (slow)"
-      Set-Location /home/student/Aud1-Labs/inspec
+      Set-Location /home/student/labFiles/inspec
       $res = (inspec exec ./cis-dil-benchmark/ --reporter json:- | ConvertFrom-Json)
       ($res.profiles.controls.results | Where-Object Status -EQ 'failed').Count |
         Should -BeGreaterThan 0
@@ -264,7 +264,7 @@ Describe '507 Labs' {
 
     It 'Part 3 - Inspec DIL Alma returns results' {
       Write-Host "Running inspec against Alma (slow)"
-      Set-Location /home/student/Aud1-Labs/inspec
+      Set-Location /home/student/labFiles/inspec
       $res = (inspec exec ./cis-dil-benchmark/ -t ssh://student:student@10.50.7.40 --reporter json:- | ConvertFrom-Json)
       ($res.profiles.controls.results | Where-Object Status -EQ 'failed').Count |
         Should -BeGreaterThan 0
@@ -278,8 +278,8 @@ Describe '507 Labs' {
   Context 'Lab 4.1' {
     BeforeAll {
       #Create docker bench results file
-      Set-Location /home/student/Aud1-Labs/docker-bench-security/
-      sudo bash /home/student/Aud1-Labs/docker-bench-security/docker-bench-security.sh -b -l results.txt
+      Set-Location /home/student/labFiles/docker-bench-security/
+      sudo bash /home/student/labFiles/docker-bench-security/docker-bench-security.sh -b -l results.txt
 
       #create config files for kubectl to work
       mkdir -p /home/student/.kube
@@ -390,7 +390,7 @@ Describe '507 Labs' {
   Context 'Lab 4.2' {
     #Run custodian with the IAM rules
     BeforeAll {
-      ~/custodian/bin/custodian run --output-dir ./pester /home/student/Aud1-Labs/custodian/aws_iam.yaml
+      ~/custodian/bin/custodian run --output-dir ./pester /home/student/labFiles/custodian/aws_iam.yaml
     }
 
     It 'Part 2 - Prowler IAM tests return results' {
@@ -402,7 +402,7 @@ Describe '507 Labs' {
     }
 
     It 'Part 3 - Custodian IAM yaml file validates' {
-      $res = (~/custodian/bin/custodian validate /home/student/Aud1-Labs/custodian/aws_iam.yaml 2>&1)
+      $res = (~/custodian/bin/custodian validate /home/student/labFiles/custodian/aws_iam.yaml 2>&1)
       $res | Should -BeLike '*Configuration valid*'
     }
 
@@ -419,13 +419,13 @@ Describe '507 Labs' {
 
   Context 'Lab 4.3' {
     BeforeAll {
-      ~/custodian/bin/custodian run --output-dir ./pester /home/student/Aud1-Labs/custodian/aws_ingress.yaml
+      ~/custodian/bin/custodian run --output-dir ./pester /home/student/labFiles/custodian/aws_ingress.yaml
     
     }
     # Part 1 is Web UI for AWS - not tested.
 
     It 'Part 2 - Custodian ingress rule validates' {
-      $res = (~/custodian/bin/custodian validate /home/student/Aud1-Labs/custodian/aws_ingress.yaml 2>&1)
+      $res = (~/custodian/bin/custodian validate /home/student/labFiles/custodian/aws_ingress.yaml 2>&1)
       $res | Should -BeLike '*Configuration valid*'
     }
 
@@ -443,7 +443,7 @@ Describe '507 Labs' {
     }
 
     It 'Part 4 - Terrascan tests return results' {
-      Set-Location /home/student/Aud1-Labs/infrastructure/terraform/aws
+      Set-Location /home/student/labFiles/infrastructure/terraform/aws
       $terraScanResult = (terrascan scan . -o json | ConvertFrom-Json).results.scan_summary
       $terraScanResult.policies_validated | Should -Be 173
       $terraScanResult.violated_policies | Should -Be 23
@@ -456,23 +456,19 @@ Describe '507 Labs' {
   Context 'Lab 4.4' {
     
     BeforeAll {
-      chmod a+x /home/student/Aud1-Labs/cloudquery.io/cloudquery
+      chmod a+x /home/student/labFiles/cloudquery.io/cloudquery
       #Clear out the tested tables, in case you've synced before with other accounts
       Write-Host "Deleting old data from tested cloudquery tables"
       psql "$Env:DSN" -c 'delete from aws_iam_users;'
       psql "$Env:DSN" -c 'delete from aws_iam_user_access_keys;'
       psql "$Env:DSN" -c 'delete from aws_ec2_subnets;'
       psql "$Env:DSN" -c 'delete from aws_policy_results;'
-      psql "$Env:DSN" -c 'delete from azure_policy_results;'
       
       Write-Host "Fetching cloudquery data (slow)"
-      ~/Aud1-Labs/cloudquery.io/cloudquery sync ~/Aud1-Labs/cloudquery.io/config/
+      ~/labFiles/cloudquery.io/cloudquery sync ~/labFiles/cloudquery.io/config/
       $env:DSN = 'postgres://postgres:pass@localhost:5432/postgres'
-      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/aws/views/resources.sql
-      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/azure/views/resource.sql
-      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/aws/policies/cis_v1.5.0/policy.sql
-      psql "$Env:DSN" -f /home/student/Aud1-Labs/cloudquery.io/azure/policies/cis_v1.3.0/policy.sql
-
+      psql "$Env:DSN" -f /home/student/labFiles/cloudquery.io/aws/views/resources.sql
+      psql "$Env:DSN" -f /home/student/labFiles/cloudquery.io/aws/policies/cis_v1.5.0/policy.sql
     }
 
     It 'Part 3 - Prowler AWS has compliance tests' {
@@ -519,14 +515,6 @@ Describe '507 Labs' {
       psql "$Env:DSN" -c "select status, count(*) as numTests from aws_policy_results group by status" | 
         grep -c "^ fail" | Should -BeExactly 1
     }
-
-    It 'Part 4 - Azure benchmark has passes and fails' {
-      psql "$Env:DSN" -c "select status, count(*) as numTests from azure_policy_results group by status" | 
-        grep -c "^ pass" | Should -BeExactly 1
-      psql "$Env:DSN" -c "select status, count(*) as numTests from azure_policy_results group by status" | 
-        grep -c "^ fail" | Should -BeExactly 1
-    }
-
   }
 
   Context 'Lab 5.2' {
