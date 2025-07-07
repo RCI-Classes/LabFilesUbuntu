@@ -19,13 +19,6 @@ Describe '507 Labs' {
         $skipAWS = $true
       }
     }
-
-    #If the Azure configuration is not there, then skip the Azure tests
-    $azSubCount = (Get-Content /home/student/.azure/azureProfile.json | ConvertFrom-Json).Subscriptions.Count
-    if ( $azSubCount -lt 1) {
-      Write-Host "Skipping Azure tests because config files do not exist"
-      $skipAzure = $true
-    } 
   }
 
   Context 'Lab 1.2' {
@@ -49,8 +42,8 @@ Describe '507 Labs' {
       $portCount | Should -Be 4
     }
     
-    It 'Part 3 - OpenSSH version is 8.9p1' {
-      $portCount = [int]( sudo nmap -sV -sT -p 22 10.50.7.20-25 | grep -c '8.9p1' )
+    It 'Part 3 - OpenSSH version is 9.6p1' {
+      $portCount = [int]( sudo nmap -sV -sT -p 22 10.50.7.20-25 | grep -c '9.6p1' )
       $portCount | Should -Be 6
     }
   
@@ -92,15 +85,19 @@ Describe '507 Labs' {
   }
 
   Context 'Lab 3.1' {
+    BeforeAll {
+      sudo apt update
+    }
+
     It 'Part 1 - lsb_release distribution is correct' {
       (lsb_release -i | awk -F: '{print $2}') |
         Should -BeLike '*Ubuntu'
       (lsb_release -d | awk -F: '{print $2}') |
-        Should -BeLike '*Ubuntu 22.04.3 LTS'
+        Should -BeLike '*Ubuntu 24.04.2 LTS'
       (lsb_release -r | awk -F: '{print $2}') |
-        Should -BeLike '*22.04'
+        Should -BeLike '*24.04'
       (lsb_release -c | awk -F: '{print $2}') | 
-        Should -BeLike '*jammy'
+        Should -BeLike '*noble'
     }
 
     It 'Part 1 - APT shows missing patches' {
@@ -116,14 +113,14 @@ Describe '507 Labs' {
 
     It 'Part 3 - Osquery returns correct OS information' {
       $res = osqueryi "select * from os_version" --json | ConvertFrom-Json
-      $res.codename | Should -BeExactly "jammy"
-      $res.major | Should -BeExactly 22
+      $res.codename | Should -BeExactly "noble"
+      $res.major | Should -BeExactly 24
       $res.minor | Should -BeExactly 4
       $res.name | Should -BeExactly "Ubuntu"
       $res.patch | Should -BeExactly 0
       $res.platform | Should -BeExactly "ubuntu"
       $res.platform_like | Should -BeExactly "debian"
-      $res.version | Should -BeExactly "22.04.3 LTS (Jammy Jellyfish)"
+      $res.version | Should -BeExactly "24.04.2 LTS (Noble Numbat)"
     }
 
     It 'Part 3 - Osquery returns > 40 SUID binaries' {
@@ -176,10 +173,10 @@ Describe '507 Labs' {
 
     #Part 4 - Live systemctl tests- no need to test them here
 
-    It 'Part 5 - Osquery shows 76 open TCP ports' {
+    It 'Part 5 - Osquery shows 66 open TCP ports' {
       $query = "select address,port from listening_ports where protocol=6 order by address,port;"
       $ports = (osqueryi "$query" --json | ConvertFrom-Json)
-      $ports.Count | Should -BeGreaterOrEqual 76
+      $ports.Count | Should -BeGreaterOrEqual 66
     }
 
     It 'Part 5 - Osquery shows -1 for pids' {
