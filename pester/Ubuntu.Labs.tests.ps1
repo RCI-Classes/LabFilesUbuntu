@@ -345,17 +345,17 @@ Describe '507 Labs' {
 
     It 'Part 3 - kubectl client version check' {
       $res = (kubectl version | awk '/Client.*:/ {print $3}')
-      $res | Should -BeExactly 'v1.28.4'
+      $res | Should -BeExactly 'v1.32.3'
     }
 
     It 'Part 3 - kubectl kustomize version check' {
       $res = (kubectl version | awk '/Kustomize.*:/ {print $3}')
-      $res | Should -BeExactly 'v5.0.4-0.20230601165947-6ce0bf390ce3'
+      $res | Should -BeExactly 'v5.5.0'
     }
 
     It 'Part 3 - kubectl server version check' {
       $res = (kubectl version | awk '/Server.*:/ {print $3}')
-      $res | Should -BeExactly 'v1.28.15'
+      $res | Should -BeExactly 'v1.32.3'
     }
 
     It 'Part 3 - kubectl has namespaces' {
