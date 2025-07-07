@@ -132,7 +132,7 @@ Describe '507 Labs' {
   Context 'Lab 3.2' {
     It 'Part 1 - twSetup script is correct' {
       $hash = (Get-FileHash -Algorithm SHA256 -Path /home/student/labFiles/tripwire/twSetup.sh).Hash
-      $hash | Should -BeExactly 'CDF13850E29ED09119AED455038AA2B24704FDBD4FF1A33B85CC66A9C9713421'
+      $hash | Should -BeExactly 'EC412436EB4624EA4D1AF6BDA7FFC91EB3FC06F8D675F3324DFC2CD96F188245'
     }
 
     It 'Part 1 - Original tripwire policy is correct' {
