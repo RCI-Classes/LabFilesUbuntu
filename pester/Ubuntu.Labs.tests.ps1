@@ -458,6 +458,9 @@ Describe '507 Labs' {
     BeforeAll {
       chmod a+x /home/student/labFiles/cloudquery.io/cloudquery
       #Clear out the tested tables, in case you've synced before with other accounts
+      Write-Host "Creating PSQL DSN"
+      $env:DSN = 'postgres://postgres:pass@localhost:5432/postgres'
+
       Write-Host "Deleting old data from tested cloudquery tables"
       psql "$Env:DSN" -c 'delete from aws_iam_users;'
       psql "$Env:DSN" -c 'delete from aws_iam_user_access_keys;'
@@ -466,7 +469,6 @@ Describe '507 Labs' {
       
       Write-Host "Fetching cloudquery data (slow)"
       ~/labFiles/cloudquery.io/cloudquery sync ~/labFiles/cloudquery.io/config/
-      $env:DSN = 'postgres://postgres:pass@localhost:5432/postgres'
       psql "$Env:DSN" -f /home/student/labFiles/cloudquery.io/aws/views/resources.sql
       psql "$Env:DSN" -f /home/student/labFiles/cloudquery.io/aws/policies/cis_v1.5.0/policy.sql
     }
