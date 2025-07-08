@@ -173,7 +173,7 @@ Describe '507 Labs' {
 
     #Part 4 - Live systemctl tests- no need to test them here
 
-    It 'Part 5 - Osquery shows 66 open TCP ports' {
+    It 'Part 5 - Osquery shows >-66 open TCP ports' {
       $query = "select address,port from listening_ports where protocol=6 order by address,port;"
       $ports = (osqueryi "$query" --json | ConvertFrom-Json)
       $ports.Count | Should -BeGreaterOrEqual 66
@@ -345,12 +345,12 @@ Describe '507 Labs' {
 
     It 'Part 3 - kubectl client version check' {
       $res = (kubectl version | awk '/Client.*:/ {print $3}')
-      $res | Should -BeExactly 'v1.32.3'
+      $res | Should -BeExactly 'v1.33.2'
     }
 
     It 'Part 3 - kubectl kustomize version check' {
       $res = (kubectl version | awk '/Kustomize.*:/ {print $3}')
-      $res | Should -BeExactly 'v5.5.0'
+      $res | Should -BeExactly 'v5.6.0'
     }
 
     It 'Part 3 - kubectl server version check' {
