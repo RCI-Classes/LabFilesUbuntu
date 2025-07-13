@@ -319,13 +319,13 @@ Describe '507 Labs' {
     }
 
     It 'Part 1 - daemon.json does not exist' {
-      $res = (sudo find / -Name "daemon.json" -type f | wc -l)
+      $cmd = "sudo find / -name daemon.json -type f | wc -l"
+      $res = Invoke-Expression $cmd
       $res | Should -BeExactly 0
     }
 
     It 'Part 2 - Docker-Bench returns passes' {
-      $cmd = "sudo find / -name daemon.json -type f | wc -l"
-      $res = Invoke-Expression $cmd
+      $res = (grep "^\[PASS\]" results.txt | wc -l)
       $res | Should -BeGreaterOrEqual 1
     }
 
