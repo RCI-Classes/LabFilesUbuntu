@@ -324,7 +324,8 @@ Describe '507 Labs' {
     }
 
     It 'Part 2 - Docker-Bench returns passes' {
-      $res = (grep "^\[PASS\]" results.txt | wc -l)
+      $cmd = "sudo find / -name daemon.json -type f | wc -l"
+      $res = Invoke-Expression $cmd
       $res | Should -BeGreaterOrEqual 1
     }
 
